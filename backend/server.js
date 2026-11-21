@@ -8,7 +8,7 @@ app.get('/api/khoi-tao-db', async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy file database/du_lieu_that.sql' });
     }
 
-    // Xóa dữ liệu mẫu cũ theo đúng thứ tự khóa ngoại để tránh trùng lặp
+    // Xóa dữ liệu mẫu cũ theo đúng thứ tự khóa ngoại
     const lenhXoaDuLieuCu = `
       DELETE FROM danh_gia;
       DELETE FROM tin_nhan;
@@ -37,16 +37,17 @@ app.get('/api/khoi-tao-db', async (req, res) => {
       .replace(/^\uFEFF/, '')
       .replace(/USE\s+\[?BanDoThuCong\]?\s*;?/gi, '');
 
+    // Tách theo GO và CHỈ giữ lại các lô chứa lệnh INSERT hoặc IDENTITY_INSERT (bỏ qua CREATE TABLE)
     const batches = sqlContent
       .split(/^\s*GO\s*$/gim)
       .map((b) => b.trim())
-      .filter((b) => b.length > 0);
+      .filter((b) => b.length > 0 && /INSERT\s+INTO/i.test(b));
 
     for (const batch of batches) {
       await pool.request().batch(batch);
     }
 
-    res.send('🎉 Đã cập nhật toàn bộ dữ liệu chuẩn lên Somee thành công!');
+    res.send(`🎉 Đã cập nhật thành công ${batches.length} lô dữ liệu chuẩn lên Somee!`);
   } catch (err) {
     res.status(500).json({ message: 'Lỗi nạp dữ liệu', error: err.message });
   }
