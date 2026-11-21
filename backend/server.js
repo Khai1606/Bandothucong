@@ -1,15 +1,44 @@
-// Route nạp dữ liệu thật từ file du_lieu_that.sql lên Somee
-app.get('/api/khoi-tao-db', async (req, res) => {
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
+require('dotenv').config();
+
+const { layKetNoi } = require('./config/db');
+const taiKhoanRoutes = require('./routes/taiKhoanRoutes');
+const sanPhamRoutes = require('./routes/sanPhamRoutes');
+const gianHangRoutes = require('./routes/gianHangRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const donHangRoutes = require('./routes/donHangRoutes');
+const voucherRoutes = require('./routes/voucherRoutes');
+const viRoutes = require('./routes/viRoutes');
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.use('/api/tai-khoan', taiKhoanRoutes);
+app.use('/api/san-pham', sanPhamRoutes);
+app.use('/api/gian-hang', gianHangRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/don-hang', donHangRoutes);
+app.use('/api/voucher', voucherRoutes);
+app.use('/api/vi', viRoutes);
+
+// Route nạp dữ liệu thật từ du_lieu_that.sql lên Somee
+app.get('/api/nap-du-lieu-that', async (req, res) => {
   try {
     const pool = await layKetNoi();
     const filePath = path.join(__dirname, '../database/du_lieu_that.sql');
 
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'Không tìm thấy file database/du_lieu_that.sql' });
+      return res.status(404).json({ message: 'Không tìm thấy file database/du_lieu_that.sql trên server!' });
     }
 
-    // Xóa dữ liệu mẫu cũ theo đúng thứ tự khóa ngoại
-    const lenhXoaDuLieuCu = `
+    // 1. Xóa sạch dữ liệu mẫu cũ theo đúng thứ tự khóa ngoại
+    await pool.request().batch(`
       DELETE FROM danh_gia;
       DELETE FROM tin_nhan;
       DELETE FROM cuoc_hoi_thoai;
@@ -25,9 +54,9 @@ app.get('/api/khoi-tao-db', async (req, res) => {
       DELETE FROM danh_muc;
       DELETE FROM gian_hang;
       DELETE FROM tai_khoan;
-    `;
-    await pool.request().batch(lenhXoaDuLieuCu);
+    `);
 
+    // 2. Đọc file du_lieu_that.sql (hỗ trợ cả UTF-16LE từ SSMS và UTF-8)
     let sqlContent = fs.readFileSync(filePath, 'utf16le');
     if (!sqlContent.includes('INSERT')) {
       sqlContent = fs.readFileSync(filePath, 'utf8');
@@ -37,7 +66,7 @@ app.get('/api/khoi-tao-db', async (req, res) => {
       .replace(/^\uFEFF/, '')
       .replace(/USE\s+\[?BanDoThuCong\]?\s*;?/gi, '');
 
-    // Tách theo GO và CHỈ giữ lại các lô chứa lệnh INSERT hoặc IDENTITY_INSERT (bỏ qua CREATE TABLE)
+    // 3. Chỉ giữ lại các lô chứa lệnh INSERT INTO (bỏ qua hoàn toàn CREATE TABLE)
     const batches = sqlContent
       .split(/^\s*GO\s*$/gim)
       .map((b) => b.trim())
@@ -47,8 +76,17 @@ app.get('/api/khoi-tao-db', async (req, res) => {
       await pool.request().batch(batch);
     }
 
-    res.send(`🎉 Đã cập nhật thành công ${batches.length} lô dữ liệu chuẩn lên Somee!`);
+    res.send(`🎉 THÀNH CÔNG! Đã nạp xong ${batches.length} lô dữ liệu chuẩn lên Somee!`);
   } catch (err) {
-    res.status(500).json({ message: 'Lỗi nạp dữ liệu', error: err.message });
+    res.status(500).json({ message: 'Lỗi nạp dữ liệu thật', error: err.message });
   }
+});
+
+app.get('/', (req, res) => {
+  res.send('API Sàn Thương Mại Điện Tử Đồ Thủ Công đang hoạt động!');
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server Backend đang chạy tại cổng ${PORT}`);
 });
