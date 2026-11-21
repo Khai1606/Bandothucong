@@ -71,13 +71,12 @@ app.get('/api/nap-du-lieu-that', async (req, res) => {
     sqlContent = sqlContent
       .replace(/^\uFEFF/, '')
       .replace(/USE\s+\[?BanDoThuCong\]?\s*;?/gi, '');
-
-    // 3. Chỉ giữ lại các lô chứa lệnh INSERT INTO (bỏ qua hoàn toàn CREATE TABLE)
+      
+    // 3. Chỉ giữ lại các lô chứa lệnh INSERT hoặc SET IDENTITY_INSERT (hỗ trợ cả INSERT [dbo]... của SSMS)
     const batches = sqlContent
       .split(/^\s*GO\s*$/gim)
       .map((b) => b.trim())
-      .filter((b) => b.length > 0 && /INSERT\s+INTO/i.test(b));
-
+      .filter((b) => b.length > 0 && /INSERT\s+(INTO\s+)?\[?dbo\]?\./i.test(b) || /INSERT\s+INTO/i.test(b));
     for (const batch of batches) {
       await pool.request().batch(batch);
     }
