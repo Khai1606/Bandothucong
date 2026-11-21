@@ -6,6 +6,8 @@ const config = {
   password: process.env.DB_PASSWORD || '123',
   server: process.env.DB_SERVER || 'localhost',
   database: process.env.DB_NAME || 'BanDoThuCong',
+  connectionTimeout: 30000,
+  requestTimeout: 30000,
   options: {
     encrypt: true,
     trustServerCertificate: true,
@@ -20,7 +22,6 @@ const poolPromise = new sql.ConnectionPool(config)
   })
   .catch((err) => {
     console.error('❌ Lỗi kết nối SQL Server:', err.message);
-    throw err;
   });
 
 module.exports = { sql, poolPromise };

@@ -83,31 +83,31 @@ export default function TrangChu() {
           </p>
         </div>
 
-        {/* Khung tìm kiếm món hàng ngay trên trang chủ */}
-        <form onSubmit={xuLyTimKiem} className="max-w-2xl flex items-center bg-white rounded-2xl p-1.5 shadow-lg">
-          <div className="pl-3.5 text-stone-400">
-            <Search size={20} />
+       {/* Khung tìm kiếm món hàng ngay trên trang chủ */}
+        <form onSubmit={xuLyTimKiem} className="max-w-2xl flex items-center bg-white rounded-2xl p-1.5 shadow-lg overflow-hidden">
+          <div className="pl-2.5 sm:pl-3.5 text-stone-400 shrink-0">
+            <Search size={18} />
           </div>
           <input
             type="text"
             value={oTimKiem}
             onChange={(e) => setOTimKiem(e.target.value)}
-            placeholder="Tìm kiếm món đồ thủ công, chất liệu (len, gốm, da...) hoặc tên tiệm..."
-            className="flex-1 px-3 py-2 text-sm text-stone-800 bg-transparent focus:outline-none"
+            placeholder="Tìm món đồ, chất liệu..."
+            className="flex-1 min-w-0 px-2.5 py-2 text-sm text-stone-800 bg-transparent focus:outline-none"
           />
           {oTimKiem && (
             <button
               type="button"
               onClick={xoaTimKiem}
-              className="p-1.5 text-stone-400 hover:text-stone-600"
+              className="p-1 text-stone-400 hover:text-stone-600 shrink-0"
               title="Xóa từ khóa"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           )}
           <button
             type="submit"
-            className="bg-amber-700 hover:bg-amber-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition"
+            className="bg-amber-700 hover:bg-amber-800 text-white px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition shrink-0 whitespace-nowrap"
           >
             Tìm kiếm
           </button>
