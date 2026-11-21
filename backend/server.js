@@ -27,8 +27,7 @@ app.use('/api/don-hang', donHangRoutes);
 app.use('/api/voucher', voucherRoutes);
 app.use('/api/vi', viRoutes);
 
-// Route nạp dữ liệu thật từ du_lieu_that.sql lên Somee
-// Route nạp dữ liệu thật từ du_lieu_that.sql lên Somee
+// Route nạp dữ liệu thật từ du_lieu_that.sql lên Somee (Kèm đồng bộ đầy đủ cột mới)
 app.get('/api/nap-du-lieu-that', async (req, res) => {
   try {
     const pool = await layKetNoi();
@@ -38,7 +37,33 @@ app.get('/api/nap-du-lieu-that', async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy file database/du_lieu_that.sql trên server!' });
     }
 
-    // 1. Xóa sạch dữ liệu mẫu cũ theo đúng thứ tự từ bảng con nhất lên bảng cha
+    // 1. Đồng bộ toàn bộ các cột & ràng buộc đã thêm trong quá trình phát triển
+    await pool.request().batch(`
+      -- Bổ sung cột ngân hàng cho bảng gian_hang
+      IF COL_LENGTH('gian_hang', 'ngan_hang_ten') IS NULL
+        ALTER TABLE gian_hang ADD ngan_hang_ten NVARCHAR(100) NULL;
+      IF COL_LENGTH('gian_hang', 'ngan_hang_so_tk') IS NULL
+        ALTER TABLE gian_hang ADD ngan_hang_so_tk VARCHAR(50) NULL;
+      IF COL_LENGTH('gian_hang', 'ngan_hang_chu_tk') IS NULL
+        ALTER TABLE gian_hang ADD ngan_hang_chu_tk NVARCHAR(150) NULL;
+
+      -- Bổ sung cột phát sinh cho các bảng đơn hàng
+      IF COL_LENGTH('don_hang_tong', 'ma_don_tong_code') IS NULL
+        ALTER TABLE don_hang_tong ADD ma_don_tong_code VARCHAR(50) NULL;
+      IF COL_LENGTH('don_hang_tong', 'tong_tien_hang') IS NULL
+        ALTER TABLE don_hang_tong ADD tong_tien_hang DECIMAL(18, 2) DEFAULT 0;
+      IF COL_LENGTH('don_hang_shop', 'ngay_cap_nhat') IS NULL
+        ALTER TABLE don_hang_shop ADD ngay_cap_nhat DATETIME DEFAULT GETDATE();
+
+      -- Gỡ ràng buộc CHECK cũ trên lich_su_rut_tien và don_hang_tong để nhận mọi trạng thái từ dữ liệu thật
+      DECLARE @sqlDrop NVARCHAR(MAX) = N'';
+      SELECT @sqlDrop += N'ALTER TABLE ' + QUOTENAME(OBJECT_SCHEMA_NAME(parent_object_id)) + N'.' + QUOTENAME(OBJECT_NAME(parent_object_id)) + N' DROP CONSTRAINT ' + QUOTENAME(name) + N';'
+      FROM sys.check_constraints
+      WHERE OBJECT_NAME(parent_object_id) IN ('lich_su_rut_tien', 'don_hang_tong');
+      EXEC sp_executesql @sqlDrop;
+    `);
+
+    // 2. Xóa sạch dữ liệu mẫu cũ theo đúng thứ tự khóa ngoại
     await pool.request().batch(`
       DELETE FROM danh_gia;
       DELETE FROM tin_nhan;
@@ -62,7 +87,7 @@ app.get('/api/nap-du-lieu-that', async (req, res) => {
       DELETE FROM tai_khoan;
     `);
 
-    // 2. Đọc file du_lieu_that.sql (hỗ trợ cả UTF-16LE từ SSMS và UTF-8)
+    // 3. Đọc file du_lieu_that.sql (hỗ trợ cả UTF-16LE từ SSMS và UTF-8)
     let sqlContent = fs.readFileSync(filePath, 'utf16le');
     if (!sqlContent.includes('INSERT')) {
       sqlContent = fs.readFileSync(filePath, 'utf8');
@@ -71,12 +96,13 @@ app.get('/api/nap-du-lieu-that', async (req, res) => {
     sqlContent = sqlContent
       .replace(/^\uFEFF/, '')
       .replace(/USE\s+\[?BanDoThuCong\]?\s*;?/gi, '');
-      
-    // 3. Chỉ giữ lại các lô chứa lệnh INSERT hoặc SET IDENTITY_INSERT (hỗ trợ cả INSERT [dbo]... của SSMS)
+
+    // 4. Chỉ giữ lại các lô chứa lệnh INSERT (hỗ trợ cả INSERT [dbo]... và INSERT INTO)
     const batches = sqlContent
       .split(/^\s*GO\s*$/gim)
       .map((b) => b.trim())
-      .filter((b) => b.length > 0 && /INSERT\s+(INTO\s+)?\[?dbo\]?\./i.test(b) || /INSERT\s+INTO/i.test(b));
+      .filter((b) => b.length > 0 && /INSERT\s+(INTO\s+)?(\[?dbo\]?\.)?\[?/i.test(b));
+
     for (const batch of batches) {
       await pool.request().batch(batch);
     }
