@@ -3,7 +3,7 @@ require('dotenv').config();
 
 const config = {
   user: process.env.DB_USER || 'sa',
-  password: process.env.DB_PASSWORD || '123',
+  password: process.env.DB_PASSWORD || '123456',
   server: process.env.DB_SERVER || 'localhost',
   database: process.env.DB_NAME || 'BanDoThuCong',
   connectionTimeout: 30000,
@@ -14,14 +14,20 @@ const config = {
   },
 };
 
-const poolPromise = new sql.ConnectionPool(config)
-  .connect()
-  .then((pool) => {
-    console.log('✅ Đã kết nối SQL Server thành công!');
-    return pool;
-  })
-  .catch((err) => {
-    console.error('❌ Lỗi kết nối SQL Server:', err.message);
-  });
+let pool = null;
 
-module.exports = { sql, poolPromise };
+async function layKetNoi() {
+  if (pool && pool.connected) {
+    return pool;
+  }
+  pool = await new sql.ConnectionPool(config).connect();
+  console.log('✅ Đã kết nối SQL Server thành công!');
+  return pool;
+}
+
+const poolPromise = layKetNoi().catch((err) => {
+  console.error('❌ Lỗi kết nối SQL Server lần đầu:', err.message);
+  return null;
+});
+
+module.exports = { sql, poolPromise, layKetNoi };
