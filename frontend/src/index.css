@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+/* Bảng màu Craft & Botanical trích xuất từ ảnh mẫu */
+@layer base {
+  body {
+    background-color: #FAF6F0;
+    color: #3B2A1E;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Ghi đè đồng bộ bảng màu Gỗ Mộc (#9C6638) & Kem Linen (#FAF6F0) cho toàn bộ giao diện */
+@theme {
+  --color-amber-50: #FAF6F0;
+  --color-amber-100: #F2E8DA;
+  --color-amber-200: #E4D1B8;
+  --color-amber-500: #D8A25E;
+  --color-amber-600: #B87D44;
+  --color-amber-700: #9C6638;
+  --color-amber-800: #7C4E27;
+  --color-amber-900: #59361A;
+
+  --color-stone-50: #F8F4EE;
+  --color-stone-100: #EFE8DE;
+  --color-stone-200: #E2D7C8;
+  --color-stone-500: #7A6855;
+  --color-stone-600: #5E4E3E;
+  --color-stone-700: #4A3B2E;
+  --color-stone-800: #3B2A1E;
+
+  --color-emerald-600: #4A6B3E;
+  --color-emerald-700: #38532E;
+  --color-green-100: #E8F0E4;
+  --color-green-700: #38532E;
+}
