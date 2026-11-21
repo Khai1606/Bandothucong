@@ -28,6 +28,7 @@ app.use('/api/voucher', voucherRoutes);
 app.use('/api/vi', viRoutes);
 
 // Route nạp dữ liệu thật từ du_lieu_that.sql lên Somee
+// Route nạp dữ liệu thật từ du_lieu_that.sql lên Somee
 app.get('/api/nap-du-lieu-that', async (req, res) => {
   try {
     const pool = await layKetNoi();
@@ -37,7 +38,7 @@ app.get('/api/nap-du-lieu-that', async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy file database/du_lieu_that.sql trên server!' });
     }
 
-    // 1. Xóa sạch dữ liệu mẫu cũ theo đúng thứ tự khóa ngoại
+    // 1. Xóa sạch dữ liệu mẫu cũ theo đúng thứ tự từ bảng con nhất lên bảng cha
     await pool.request().batch(`
       DELETE FROM danh_gia;
       DELETE FROM tin_nhan;
@@ -45,10 +46,15 @@ app.get('/api/nap-du-lieu-that', async (req, res) => {
       DELETE FROM lich_su_rut_tien;
       DELETE FROM vi_gian_hang;
       DELETE FROM van_chuyen;
+      DELETE FROM giao_dich_thanh_toan;
       DELETE FROM chi_tiet_don_hang;
       DELETE FROM don_hang_shop;
       DELETE FROM don_hang_tong;
+      DELETE FROM chi_tiet_gio_hang;
+      DELETE FROM gio_hang;
+      DELETE FROM dia_chi_nhan_hang;
       DELETE FROM ma_giam_gia;
+      DELETE FROM phan_loai_san_pham;
       DELETE FROM hinh_anh_san_pham;
       DELETE FROM san_pham;
       DELETE FROM danh_muc;
@@ -80,10 +86,6 @@ app.get('/api/nap-du-lieu-that', async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Lỗi nạp dữ liệu thật', error: err.message });
   }
-});
-
-app.get('/', (req, res) => {
-  res.send('API Sàn Thương Mại Điện Tử Đồ Thủ Công đang hoạt động!');
 });
 
 const PORT = process.env.PORT || 5000;
