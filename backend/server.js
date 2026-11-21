@@ -1,8 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
+const { poolPromise } = require('./config/db');
 const taiKhoanRoutes = require('./routes/taiKhoanRoutes');
 const sanPhamRoutes = require('./routes/sanPhamRoutes');
 const gianHangRoutes = require('./routes/gianHangRoutes');
@@ -24,6 +26,42 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/don-hang', donHangRoutes);
 app.use('/api/voucher', voucherRoutes);
 app.use('/api/vi', viRoutes);
+
+// Route khởi tạo bảng & dữ liệu mẫu 1 lần duy nhất lên Somee
+app.get('/api/khoi-tao-db', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    // Tìm file .sql trong thư mục database
+    const thuMucDb = path.join(__dirname, '../database');
+    const files = fs.readdirSync(thuMucDb).filter((f) => f.endsWith('.sql'));
+    if (files.length === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy file .sql trong thư mục database' });
+    }
+
+    let sqlContent = fs.readFileSync(path.join(thuMucDb, files[0]), 'utf8');
+
+    // Loại bỏ các lệnh tạo/chọn DB vì Somee đã tạo sẵn BanDoThuCong
+    sqlContent = sqlContent
+      .replace(/USE\s+master\s*;?/gi, '')
+      .replace(/DROP\s+DATABASE[\s\S]*?;/gi, '')
+      .replace(/CREATE\s+DATABASE[\s\S]*?;/gi, '')
+      .replace(/USE\s+BanDoThuCong\s*;?/gi, '');
+
+    // Tách theo từ khóa GO và chạy tuần tự từng lô
+    const batches = sqlContent
+      .split(/^\s*GO\s*$/gim)
+      .map((b) => b.trim())
+      .filter((b) => b.length > 0);
+
+    for (const batch of batches) {
+      await pool.request().batch(batch);
+    }
+
+    res.send('🎉 Đã tạo toàn bộ bảng và nạp dữ liệu mẫu lên Somee thành công!');
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi khởi tạo DB', error: err.message });
+  }
+});
 
 app.get('/', (req, res) => {
   res.send('API Sàn Thương Mại Điện Tử Đồ Thủ Công đang hoạt động!');
